@@ -1,0 +1,71 @@
+# Python bytecode and native extensions
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments and local environment configuration
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+.envrc
+.direnv/
+
+# Packaging and test/tool caches
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Private measurements and SQLite sidecars — never publish usage history
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.sqlite-journal
+*.sqlite3-journal
+*.db
+*.db-*
+state/
+.local/
+
+# Local logs, previews, temporary files and editor backups
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+/energy-preview.png
+/session-preview.png
+
+# Credentials and private workspace metadata
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+.codex/
+.agents/
+.vscode/
+.idea/
+.fleet/
+*.code-workspace
+.DS_Store
+Thumbs.db

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Layer shell must be loaded before GTK initializes its Wayland backend.
+cd -- "$(dirname -- "$0")" || exit 1
+export GDK_BACKEND=wayland
+export LD_PRELOAD="libgtk4-layer-shell.so.0${LD_PRELOAD:+:$LD_PRELOAD}"
+exec python3 -m niri_feel "$@"
