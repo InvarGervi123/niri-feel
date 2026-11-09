@@ -45,10 +45,13 @@ Battery decrease, energy loss, and measured CPU energy take priority in its layo
   sessions across process restarts. Unobserved time is marked as a coverage gap.
 - **Full-sequence preview.** Try disconnect → recording → reconnect → summary →
   fade without touching the charger or writing simulated data to real history.
-- **Quiet integration.** The overlay does not take keyboard focus, capture pointer
-  input, reserve screen space, or change Niri, Noctalia, or power profiles.
+- **Low Battery Experience.** A soft red aura at 15%, followed by visible Options
+  for Performance or Brightness. Every system change requires separate confirmation.
+- **Quiet integration.** Overlays do not steal keyboard focus or reserve screen
+  space. Only visible controls receive pointer input. Niri and Noctalia settings
+  are never rewritten; supported power changes happen only after confirmation.
 
-Low-battery effects and a welcome-back interface are not implemented in this Alpha.
+A welcome-back interface is not implemented in this Alpha.
 
 ## System requirements
 
@@ -135,6 +138,76 @@ these original animation previews still come from live UPower readings.
 ```sh
 python3 -m niri_feel --status
 ```
+
+## Low Battery Experience
+
+At a fresh on-battery reading of **15% or lower**, Niri Feel shows a soft rose-red
+edge aura for 3.2 seconds (6 seconds in Preview). Broad, graduated haze drifts along
+the edges; the center of the screen stays untouched. This first layer has no words, buttons,
+panel, or pointer input region. It fades completely.
+
+As the aura begins to fade, a small semi-transparent **Options** button appears
+at the bottom center. Its label is always visible; no hover discovery is needed.
+Clicking reveals a compact, floating action strip:
+**Performance**, **Brightness**, **Dismiss**. Nothing functional opens without
+that intent. Choosing a priority shows its explanation and a **separate Apply
+change button** before any real system request. There is no framed popup card.
+
+| Priority | Proposed change | Kept unchanged |
+| --- | --- | --- |
+| Performance | Dim the supported internal display to 80% of its current level | Current CPU power profile |
+| Brightness | Switch the existing power-profiles-daemon to `power-saver` | Screen brightness |
+
+For example, Performance proposes 100% → 80% brightness, or 50% → 40%.
+It does not enable a faster CPU profile. Brightness may reduce CPU performance.
+Unsupported options explain why they cannot be applied. Existing profile holds
+from other applications are respected. If the profile, brightness or other checked
+capabilities change after review, confirmation is rejected and must be reviewed
+again. Changes are one-shot requests; no background enforcement, automatic restore,
+new power service, governor write or privileged fallback is installed.
+
+Brightness uses the existing logind `SetBrightness` interface, only when one
+readable internal backlight is available. Power profiles use the already-running
+power-profiles-daemon. The application does not auto-start these services. An OS
+permission failure is reported; it does not trigger a sudo fallback.
+
+If ignored, Options softly fades after about eight seconds. The Preview stays
+running without applying any changes. The intent-revealed strip has a 10-second idle timeout; review has a 30-second timeout.
+Timeout, Cancel and Dismiss never apply settings. Keyboard focus stays in your
+working application. Only Options, then the explicitly revealed controls,
+accept pointer input; the rest of the edge surface remains click-through.
+Connecting power cancels the low-battery UI before the existing charging experience plays.
+
+The alert is latched across process restarts in a small user-local
+`low-battery.json` beside the session database. It re-arms only after a fresh
+reading at or above 20%, so charger flapping and threshold jitter do not repeat
+alerts. Session SQLite data is not changed by this feature.
+
+### Noctalia coexistence
+
+Niri Feel does not send a duplicate desktop notification, stop a notification
+daemon, or modify Noctalia configuration. It reads the running Noctalia warning
+threshold before enabling its optional controls. With Noctalia's default 10%
+threshold, Niri Feel handles 15%, leaving the later warnings to Noctalia. If Noctalia already
+covers the current level (or its live policy cannot be read), Niri Feel yields
+the optional controls and shows only the brief aura. Existing critical warnings
+remain owned by Noctalia. See [Noctalia's battery service documentation](https://docs.noctalia.dev/noctalia/services/battery/).
+
+### Preview without draining the battery
+
+```sh
+./run --preview-low-battery
+```
+
+This simulates the low-battery aura; the terminal explicitly labels it as a
+preview. As the aura fades, click the labelled **Options** control at the bottom
+center within its eight-second availability window to reveal the simulated
+controls. Try either priority, read its proposal, and use **Simulate apply**. **Replay aura** repeats the six-second aura
+inside the same running application. The Preview stays open after the aura fades;
+use **Dismiss** or Ctrl+C to exit. The preview never instantiates the real settings
+adapter, writes the real alert latch, or touches session SQLite. It exits when
+the experience is dismissed. Normal low-battery alerts retain their idle timeouts.
+No settings are changed even after confirming a simulated action. No extra packages are needed.
 
 ## What can actually be measured?
 
@@ -240,6 +313,19 @@ Tests cover energy conversions, overlapping counters, wraps/resets, missing data
 sleep separation, process restarts, reboots, rapid transitions, SQLite permissions
 and retention, UPower edge wiring, preview isolation, and rendering/fade behavior.
 They do not suspend the laptop or change its power configuration.
+
+To include the live GTK/Niri pointer-region regression (briefly shows a test
+surface in the current desktop session):
+
+```sh
+LD_PRELOAD=libgtk4-layer-shell.so.0 GDK_BACKEND=wayland \
+  NIRI_FEEL_GUI_TEST=1 python3 -m unittest discover -s tests -v
+```
+
+The live test checks that hidden Options controls cannot intercept the center
+Brightness button. The complete Options → Choice → Confirmation flow has also
+been exercised with actual Wayland pointer events in the isolated Preview, even
+with the real battery at 100%.
 
 For a manual check, run the full preview while typing in another application;
 then test a real unplug/replug cycle with the normal listener. Battery hardware
