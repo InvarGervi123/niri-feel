@@ -8,7 +8,7 @@ gi.require_version("Gtk4LayerShell", "1.0")
 from gi.repository import Gtk, Gdk, GLib, Gtk4LayerShell as Layer
 
 from .render import render
-from .session_visual import render_summary, SUMMARY_DURATION
+from .session_visual import render_summary, SUMMARY_DURATION, SUMMARY_HEIGHT
 
 DURATION = 3.4
 
@@ -48,7 +48,7 @@ class EdgeLight(Gtk.ApplicationWindow):
     def play(self, kind, title, detail, summary=None):
         self.summary = summary
         self.duration = SUMMARY_DURATION if summary is not None else DURATION
-        height = 290 if summary is not None else 108
+        height = SUMMARY_HEIGHT if summary is not None else 108
         self.area.set_content_height(height)
         self.set_default_size(-1, height)
         self.kind, self.title_text, self.detail = kind, title, detail

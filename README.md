@@ -28,9 +28,8 @@ been exercised on Niri with CachyOS and an Intel laptop. Hardware support and
 measurement precision vary. Automated tests cover accounting and failure cases;
 physical suspend and unplug/replug testing is still important on each machine.
 
-The reconnect summary currently stays visible for approximately eight seconds.
-Its size and timing are intentionally unchanged in this publication and may be
-refined later. There are no stable release artifacts or packaged installers yet.
+The compact reconnect summary stays visible for approximately 4.8 seconds.
+Battery decrease, energy loss, and measured CPU energy take priority in its layout. There are no stable release artifacts or packaged installers yet.
 
 ## What works today
 
@@ -114,7 +113,7 @@ backend. Use `./run` for the graphical experience.
 ./run --preview-session
 ```
 
-The sequence lasts approximately 13 seconds. It compresses 45 virtual minutes,
+The sequence lasts approximately 10 seconds. It compresses 45 virtual minutes,
 including 15 minutes of sleep, into a short demonstration. The display is clearly
 labelled **SIMULATED**. Its SQLite database exists only in memory: it does not
 listen for real charger events, modify live accounting, or write synthetic data

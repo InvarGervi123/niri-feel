@@ -35,6 +35,7 @@ def main():
         return result[0]
     try:
         from .visual import EdgeLight,Layer,Gtk,Gdk
+        from .session_visual import SUMMARY_DURATION
     except (ValueError,ImportError) as error:
         print(f"Missing graphical dependency: {error}\nInstall gtk4-layer-shell; see README.md.",file=sys.stderr)
         return 1
@@ -150,7 +151,7 @@ def main():
         def preview_reconnect(self):
             summary=self.preview_model.reconnect()
             self.play("connect",summary=summary,title="Preview · Back on power",detail="Simulated session")
-            self.later(8400,self.quit)
+            self.later(round((SUMMARY_DURATION+.4)*1000),self.quit)
 
         def do_shutdown(self):
             for timer in self.timers:

@@ -6,7 +6,7 @@ import cairo
 from niri_feel.energy import Counter, Sample
 from niri_feel.sessions import Sessions, SessionStore
 from niri_feel.session_preview import PreviewSession
-from niri_feel.session_visual import render_summary
+from niri_feel.session_visual import render_summary, SUMMARY_DURATION, SUMMARY_HEIGHT
 
 
 def reading(t,online=False,wh=30,pp=80,boot=None,energy=None,identity=(("BAT0",1,"battery"),),counters=True):
@@ -164,11 +164,11 @@ class PreviewTests(unittest.TestCase):
 
     def test_summary_fades_and_can_render_missing_values(self):
         for summary in ({'preview':True},{'wh':.3,'percentage_points':1,'duration':180,'cpu_wh':.1,'cpu_seconds':100}):
-            for t in (0,.4,1,4,7.5,8):
-                surface=cairo.ImageSurface(cairo.FORMAT_ARGB32,1920,290)
-                render_summary(cairo.Context(surface),1920,290,t,summary)
+            for t in (0,.2,.4,1,3.8,4.3,SUMMARY_DURATION):
+                surface=cairo.ImageSurface(cairo.FORMAT_ARGB32,1920,SUMMARY_HEIGHT)
+                render_summary(cairo.Context(surface),1920,SUMMARY_HEIGHT,t,summary)
                 surface.flush()
-                self.assertEqual(any(surface.get_data()),.45<t<8)
+                self.assertEqual(any(surface.get_data()),.25<t<SUMMARY_DURATION)
 
 class ServiceTests(unittest.TestCase):
     def test_upower_edges_finalize_once_and_prepare_automatic_summary(self):
