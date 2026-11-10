@@ -11,6 +11,7 @@ def main():
     modes.add_argument("--preview",choices=("connect","disconnect","both"),help="preview original charger animations")
     modes.add_argument("--preview-session",action="store_true",help="preview unplug, collection, reconnect and summary; simulated, isolated data")
     modes.add_argument("--preview-low-battery",action="store_true",help="preview 15% edge glow and simulated, confirmation-only power choices")
+    modes.add_argument("--preview-network-recovery",action="store_true",help="preview network loss, recovery and simulated partial-download help")
     modes.add_argument("--status",action="store_true",help="print live UPower status and exit")
     args=parser.parse_args()
     from gi.repository import Gio, GLib
@@ -40,7 +41,7 @@ def main():
     except (ValueError,ImportError) as error:
         print(f"Missing graphical dependency: {error}\nInstall gtk4-layer-shell; see README.md.",file=sys.stderr)
         return 1
-    preview=bool(args.preview or args.preview_session or args.preview_low_battery)
+    preview=bool(args.preview or args.preview_session or args.preview_low_battery or args.preview_network_recovery)
 
     class Feel(Gtk.Application):
         def __init__(self):
@@ -51,6 +52,7 @@ def main():
             self.energy=None
             self.preview_model=None
             self.low=None
+            self.network=None
             self.timers=set()
             self.sequence=[]
 
@@ -78,7 +80,11 @@ def main():
             self.sync_monitors()
             GLib.unix_signal_add(GLib.PRIORITY_DEFAULT,signal.SIGINT,self.exit_signal)
             GLib.unix_signal_add(GLib.PRIORITY_DEFAULT,signal.SIGTERM,self.exit_signal)
-            if args.preview_low_battery:
+            if args.preview_network_recovery:
+                from .network_recovery import NetworkRecovery
+                self.network=NetworkRecovery(self,preview=True,finished=self.quit)
+                self.later(500,self.network.start_preview)
+            elif args.preview_low_battery:
                 from .low_experience import LowExperience
                 self.low=LowExperience(self,preview=True,finished=self.quit)
                 self.later(500,lambda:self.low.show(15))
@@ -100,6 +106,8 @@ def main():
                 from .low_experience import LowExperience
                 self.low=LowExperience(self)
                 self.source=PowerSource(self.update_text,self.power_event)
+                from .network_recovery import NetworkRecovery
+                self.network=NetworkRecovery(self)
                 print("Listening · unplug to start a session · reconnect for your summary. Ctrl+C to stop.",flush=True)
 
         def exit_signal(self):
@@ -164,6 +172,8 @@ def main():
             self.later(round((SUMMARY_DURATION+.4)*1000),self.quit)
 
         def do_shutdown(self):
+            if self.network:
+                self.network.close()
             if self.low:
                 self.low.close()
             for timer in self.timers:

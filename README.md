@@ -5,7 +5,7 @@
 
 **A quieter way for your laptop to talk about energy.**
 
-Charging light, battery sessions, and honest energy stories for Niri on Linux.
+Charging light, battery sessions, and local network recovery for Niri on Linux.
 
 [Alpha](#alpha-status) · [Get started](#get-started) · [Preview](#try-the-experience) · [Measurement limits](#what-can-actually-be-measured) · [Apache 2.0](LICENSE)
 
@@ -47,6 +47,9 @@ Battery decrease, energy loss, and measured CPU energy take priority in its layo
   fade without touching the charger or writing simulated data to real history.
 - **Low Battery Experience.** A soft red aura at 15%, followed by visible Options
   for Performance or Brightness. Every system change requires separate confirmation.
+- **Network Recovery.** Amber/green edge auras follow NetworkManager's reported
+  loss and return of connectivity. Recently active partial downloads can receive
+  a small, local recovery hint after reconnection; nothing resumes automatically.
 - **Quiet integration.** Overlays do not steal keyboard focus or reserve screen
   space. Only visible controls receive pointer input. Niri and Noctalia settings
   are never rewritten; supported power changes happen only after confirmation.
@@ -61,6 +64,8 @@ A welcome-back interface is not implemented in this Alpha.
 | Runtime | Python 3.10 or newer; tested with Python 3.14 |
 | Graphics | GTK4, PyGObject, Pycairo, and the Gtk4LayerShell introspection typelib |
 | Power events | UPower over the system D-Bus |
+| Network recovery | An already-running NetworkManager; reported Connectivity results |
+| Partial-download hints | An existing local XDG Downloads directory and GIO file-monitor support |
 | Sleep accounting | Linux monotonic/boottime clocks; logind signals when available |
 | Battery energy | Readable `/sys/class/power_supply` battery energy/capacity fields |
 | CPU energy | Readable Intel RAPL package counters under `/sys/class/powercap` |
@@ -110,6 +115,15 @@ backend. Use `./run` for the graphical experience.
 
 ## Try the experience
 
+All previews run independently of real low-battery or connectivity events.
+
+| Experience | Command |
+| --- | --- |
+| Charging light | `./run --preview both` |
+| Battery Session Summary | `./run --preview-session` |
+| Low Battery options and confirmation | `./run --preview-low-battery` |
+| Network Recovery and partial-download hint | `./run --preview-network-recovery` |
+
 ### Complete battery-session preview
 
 ```sh
@@ -152,6 +166,11 @@ Clicking reveals a compact, floating action strip:
 **Performance**, **Brightness**, **Dismiss**. Nothing functional opens without
 that intent. Choosing a priority shows its explanation and a **separate Apply
 change button** before any real system request. There is no framed popup card.
+
+Low Battery and Network Recovery share floating mint typography, lightweight
+vector action icons, and a soft, unframed shade behind the text. Their spacing
+and fades follow the Battery Session Summary; labelled controls remain clickable
+without taking keyboard focus. The edge auras are unchanged.
 
 | Priority | Proposed change | Kept unchanged |
 | --- | --- | --- |
@@ -208,6 +227,91 @@ use **Dismiss** or Ctrl+C to exit. The preview never instantiates the real setti
 adapter, writes the real alert latch, or touches session SQLite. It exits when
 the experience is dismissed. Normal low-battery alerts retain their idle timeouts.
 No settings are changed even after confirming a simulated action. No extra packages are needed.
+
+## Network Recovery
+
+```sh
+./run --preview-network-recovery
+```
+
+The roughly 23-second Preview demonstrates an amber disconnection aura, a
+simulated partial download, a short green reconnection aura, and a small recovery
+view that fades naturally if ignored. All displayed download data is marked
+**PREVIEW / SIMULATED**. **Open folder** is simulated too: it confirms the action
+without opening a real folder. This mode creates no download files, changes no
+network settings, and does not instantiate the real network or Downloads watcher.
+
+For real events, leave the normal `./run` listener running. The feature listens
+to NetworkManager's existing `State` and `Connectivity` D-Bus properties, with a
+1.2-second debounce. It never calls `CheckConnectivity`, enables probes, reconnects
+a network, or sends a request to a test server. NetworkManager may already perform
+its own configured checks; Niri Feel only consumes their results. A connected link
+with unknown Internet connectivity is not presented as proven Internet access.
+The initial state is seeded quietly; daemon loss or unknown/sleep state breaks
+correlation rather than creating a fake outage.
+
+### Which downloads are considered?
+
+GIO watches only the **top level** of the configured XDG Downloads directory
+(falling back to `~/Downloads`). It observes metadata for `.part`, `.crdownload`
+and `.aria2` files, plus changes to an adjacent aria2 payload. There is no recursive
+scan, file-content read, browser-history access, URL extraction, or browser-profile
+inspection. Symlink files are not followed. Paths and timestamps remain in bounded
+memory; this feature writes no history, database, or telemetry.
+
+The first scan is a baseline, not evidence of a failed download. A candidate must
+have an **observed creation or size/mtime/allocation change within 30 seconds
+before the observed disconnect, or its first 10 seconds**. A second metadata
+comparison waits about four seconds after connectivity returns. Files that vanish,
+change identity, or keep changing in that recovery window are not reported. Later
+activity removes an already displayed hint. An old, untouched partial file is not
+blamed on the outage.
+
+When there is a candidate, the floating view shows its name and location, allocated disk
+space, logical file length, an explicitly uncertain status, and a conditional
+recovery suggestion. With several candidates, **Next** cycles through them.
+**Open folder** opens the Downloads directory in the file manager only after a
+click. There is no Resume button or automatic download action in this version.
+The view fades after about 14 seconds without interaction. If no candidate was
+identified, there is **no generic recovery popup**, only the green aura.
+
+### Important detection limits
+
+- A partial extension does not prove which application owns the file, that it is
+  downloading, or that a network outage caused an interruption. The status is
+  always **Possibly affected · app status unknown**, never a claim of failure.
+- `st_size` is logical length and `st_blocks * 512` is allocated filesystem space.
+  Neither proves how much valid payload has been downloaded. Sparse files and
+  preallocation make this especially important. No percentage or expected total
+  size is guessed.
+- An `.aria2` file is a **control file**. Its own size is never shown as downloaded
+  payload. When the adjacent payload is unavailable, data size is unavailable.
+  An aria2 sidecar and a matching `.part` payload are deduplicated.
+- Firefox/Chromium hints only suggest checking the original browser's Downloads
+  interface for Resume/Retry. For aria2, the payload and control file should stay
+  together and the original task should be checked. Server support, source URLs,
+  credentials, and actual resume availability are not known to Niri Feel.
+- Paused downloads, unrelated writes and delayed automatic retries can still
+  produce false positives. Fast writes/retries, unsupported names, nested folders,
+  and activity before this process started can be missed. A restart does not
+  reconstruct earlier network events or download history.
+- Monitoring is bounded to 5,000 directory entries per snapshot, 128 partials,
+  256 pending paths and four metadata jobs. On overload or unavailable monitoring,
+  evidence is discarded conservatively; the UI never claims complete coverage.
+- Connectivity classification depends on what NetworkManager reports. Its checks
+  may be disabled, stale or unable to distinguish a particular server failure.
+  Networkd-only and other unsupported network stacks do not produce these auras.
+- If Downloads is missing or cannot be monitored, it is not created. Connectivity
+  animation still works; file-recovery hints are unavailable.
+
+Network state, evidence (`network_model.py`) and GTK presentation are separate,
+so a future explicitly authorized browser bridge can supply stronger task/resume
+information without pretending file metadata already provides it. No browser
+extension is implemented or required now.
+
+References: [NetworkManager D-Bus states](https://networkmanager.pages.freedesktop.org/NetworkManager/libnm/libnm-nm-dbus-interface.html),
+[GIO file monitoring](https://docs.gtk.org/gio/class.FileMonitor.html),
+[aria2 manual](https://aria2.github.io/manual/en/html/aria2c.html).
 
 ## What can actually be measured?
 
@@ -325,7 +429,9 @@ LD_PRELOAD=libgtk4-layer-shell.so.0 GDK_BACKEND=wayland \
 The live test checks that hidden Options controls cannot intercept the center
 Brightness button. The complete Options → Choice → Confirmation flow has also
 been exercised with actual Wayland pointer events in the isolated Preview, even
-with the real battery at 100%.
+with the real battery at 100%. Network Recovery tests also cover NM state seeding,
+old/growing/removed partials, metadata-only inspection, aria2 sidecars, sparse
+files, real temporary-directory monitor events, and Preview isolation.
 
 For a manual check, run the full preview while typing in another application;
 then test a real unplug/replug cycle with the normal listener. Battery hardware

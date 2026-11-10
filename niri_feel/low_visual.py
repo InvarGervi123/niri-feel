@@ -5,6 +5,7 @@ import cairo
 from gi.repository import Gtk, Gdk, GLib
 from .visual import Layer
 from .render import smooth
+from .floating_ui import LightColumn, LightButton, Glyph, text_label, actions, paint_field, install_style as install_shared_style
 
 GLOW_DURATION=3.2
 PREVIEW_GLOW_DURATION=6.0
@@ -48,11 +49,12 @@ def render_glow(cr,width,height,elapsed,duration=GLOW_DURATION):
 
 
 class LowWindow(Gtk.ApplicationWindow):
-    def __init__(self,app,monitor,controller,with_card):
+    def __init__(self,app,monitor,controller,with_card,namespace="niri-feel-low"):
         super().__init__(application=app,title="Niri Feel · Low battery")
         self.controller=controller
         self.card=None
         self.intent=False
+        self.light_visible=False
         self.handle=None
         self.handle_revealer=None
         self.sources=set()
@@ -67,7 +69,7 @@ class LowWindow(Gtk.ApplicationWindow):
         self.set_focusable(False)
         self.set_can_focus(False)
         Layer.init_for_window(self)
-        Layer.set_namespace(self,"niri-feel-low")
+        Layer.set_namespace(self,namespace)
         Layer.set_monitor(self,monitor)
         Layer.set_layer(self,Layer.Layer.OVERLAY)
         for edge in (Layer.Edge.TOP,Layer.Edge.BOTTOM,Layer.Edge.LEFT,Layer.Edge.RIGHT):
@@ -76,12 +78,12 @@ class LowWindow(Gtk.ApplicationWindow):
         Layer.set_keyboard_mode(self,Layer.KeyboardMode.NONE)
         root=Gtk.Overlay()
         self.area=Gtk.DrawingArea()
-        self.area.set_draw_func(lambda area,cr,w,h:render_glow(cr,w,h,time.monotonic()-self.started,self.glow_duration))
+        self.area.set_draw_func(self.draw_surface)
         self.area.set_can_target(False)
         root.set_child(self.area)
         self.set_child(root)
         if with_card:
-            self.card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=7)
+            self.card=LightColumn(self.area.queue_draw)
             self.card.add_css_class("low-strip")
             self.card.set_halign(Gtk.Align.CENTER)
             self.card.set_valign(Gtk.Align.END)
@@ -95,7 +97,7 @@ class LowWindow(Gtk.ApplicationWindow):
             self.handle_revealer.set_halign(Gtk.Align.CENTER)
             self.handle_revealer.set_valign(Gtk.Align.END)
             self.handle_revealer.set_margin_bottom(42)
-            self.handle=Gtk.Button(label="Options")
+            self.handle=LightButton("Options")
             self.handle.add_css_class("low-handle")
             self.handle.set_focus_on_click(False)
             self.handle.set_size_request(100,34)
@@ -111,6 +113,16 @@ class LowWindow(Gtk.ApplicationWindow):
         self.connect("map",lambda *_:self.sync_input())
         self.tick_id=self.area.add_tick_callback(self.tick)
         self.set_visible(True)
+
+    def draw_surface(self,area,cr,width,height):
+        render_glow(cr,width,height,time.monotonic()-self.started,self.glow_duration)
+        self.draw_content_light(cr)
+
+    def draw_content_light(self,cr):
+        if not self.light_visible or self.card is None or not self.card.get_visible():return
+        ok,bounds=self.card.compute_bounds(self)
+        if ok:
+            paint_field(cr,bounds.get_x(),bounds.get_y(),bounds.get_width(),bounds.get_height(),self.card.get_opacity())
 
     def later(self,ms,callback):
         def fire():
@@ -192,29 +204,18 @@ class LowWindow(Gtk.ApplicationWindow):
         self.handle_revealer.set_can_target(False)
         self.handle_revealer.set_reveal_child(False)
         self.card.set_visible(True)
+        self.light_visible=True
         child=self.card.get_first_child()
         while child:
             following=child.get_next_sibling()
             self.card.remove(child); child=following
         if title:
-            heading=Gtk.Label(label=title,xalign=.5)
-            heading.add_css_class("low-heading")
-            self.card.append(heading)
+            self.card.append(text_label(title,"feel-eyebrow"))
         if body:
-            label=Gtk.Label(label=body,xalign=.5)
-            label.set_wrap(True)
-            label.set_max_width_chars(40)
-            label.set_justify(Gtk.Justification.CENTER)
-            label.add_css_class("low-body")
-            self.card.append(label)
-        row=Gtk.Box(spacing=5)
-        row.set_halign(Gtk.Align.CENTER)
-        for caption,callback in buttons:
-            button=Gtk.Button(label=caption)
-            button.set_focus_on_click(False)
-            button.connect("clicked",lambda _,callback=callback:self.later(0,callback))
-            row.append(button)
-        self.card.append(row)
+            self.card.append(text_label(body,"feel-copy",chars=40))
+        for row in actions(buttons,lambda callback:self.later(0,callback)):
+            self.card.append(row)
+        self.card.animate()
         self.sync_input()
 
     def stop(self):
@@ -222,6 +223,7 @@ class LowWindow(Gtk.ApplicationWindow):
         for timer in self.sources:
             GLib.source_remove(timer)
         self.sources.clear()
+        if self.card is not None and hasattr(self.card,'stop_motion'):self.card.stop_motion()
         if self.input_tick:
             self.remove_tick_callback(self.input_tick)
             self.input_tick=0
@@ -232,17 +234,4 @@ class LowWindow(Gtk.ApplicationWindow):
 
 
 def install_style(display):
-    css=Gtk.CssProvider()
-    css.load_from_data(b"""
-    .low-strip { background: transparent; border: none; padding: 8px 12px; }
-    .low-heading { color: #eab5bb; font-size: 11px; text-shadow: 0 1px 3px #091316; }
-    .low-body { color: #d5e8e1; font-size: 12px; text-shadow: 0 1px 3px #091316; }
-    .low-strip button { background: rgba(15,31,34,.68); color: #baf2dd; border: none;
-                       border-radius: 14px; padding: 6px 12px; box-shadow: none; }
-    .low-strip button:hover { background: rgba(36,70,65,.85); }
-    .low-handle { background: rgba(17,31,35,.74); color: #edc8cd;
-                  border: 1px solid rgba(234,153,166,.30); border-radius: 18px;
-                  padding: 6px 17px; font-size: 12px; box-shadow: none; }
-    .low-handle:hover { background: rgba(31,53,55,.90); color: #d0f2e5; }
-    """)
-    Gtk.StyleContext.add_provider_for_display(display,css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
+    install_shared_style(display)
