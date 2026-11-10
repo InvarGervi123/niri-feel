@@ -7,7 +7,7 @@
 
 Charging light, battery sessions, and honest energy stories for Niri on Linux.
 
-[Alpha](#alpha-status) · [Get started](#get-started) · [Preview](#try-the-experience) · [Measurement limits](#what-can-actually-be-measured) · [MIT](LICENSE)
+[Alpha](#alpha-status) · [Get started](#get-started) · [Preview](#try-the-experience) · [Measurement limits](#what-can-actually-be-measured) · [Apache 2.0](LICENSE)
 
 </div>
 
@@ -341,4 +341,21 @@ sensor's meaning, units, and overlap with existing measurements.
 
 ## License
 
-[MIT License](LICENSE) — Copyright © 2026 Niri Feel contributors.
+[Apache License, Version 2.0](LICENSE) (`Apache-2.0`).
+
+Copyright © 2026 **Invar Gervi**, the original creator of Niri Feel.
+See [NOTICE](NOTICE) for attribution and the
+[project repository](https://github.com/InvarGervi123/niri-feel) for the source.
+
+Commercial use, modification, and inclusion of Niri Feel code in proprietary
+software are permitted, subject to the license conditions. Redistribution must
+comply with Section 4, including supplying the license, marking modified files,
+and retaining applicable copyright and attribution notices. Relevant NOTICE
+attributions must be reproduced in one of the locations permitted by the license.
+
+The license does **not** require creator attribution inside the application's
+user interface or prior permission from the original creator. NOTICE adds no
+extra conditions. Dependencies retain their respective licenses.
+
+This license update does not retroactively revoke permissions already granted
+for earlier copies of the project.
