@@ -53,6 +53,8 @@ def main():
             self.preview_model=None
             self.low=None
             self.network=None
+            self.brightness=None
+            self.brightness_windows=None
             self.timers=set()
             self.sequence=[]
 
@@ -108,7 +110,22 @@ def main():
                 self.source=PowerSource(self.update_text,self.power_event)
                 from .network_recovery import NetworkRecovery
                 self.network=NetworkRecovery(self)
+                from .brightness_monitor import BrightnessMonitor
+                from .brightness_visual import BrightnessOSD
+                css.load_from_data(b"window { background: transparent; box-shadow: none; } .brightness-card { background: alpha(#171923, .94); border: 1px solid alpha(white, .12); border-radius: 12px; padding: 8px 12px; min-width: 142px; } .brightness-icon { color: #f2c879; font-size: 17px; } .brightness-percent { color: #f5f3ee; font-size: 17px; font-weight: 700; } .brightness-meta { color: #b8bac4; font-size: 10px; } progress trough { min-height: 3px; background: alpha(white, .14); border-radius: 3px; } progress progress { min-height: 3px; background: #f2c879; border-radius: 3px; }")
+                monitors=self.monitors_list()
+                self.brightness_windows={monitors[0]:BrightnessOSD(self,monitors[0])} if monitors else {}
+                self.brightness=BrightnessMonitor(self.brightness_changed)
                 print("Listening · unplug to start a session · reconnect for your summary. Ctrl+C to stop.",flush=True)
+
+        def monitors_list(self):
+            return [self.monitors.get_item(i) for i in range(self.monitors.get_n_items())]
+
+        def brightness_changed(self, value, count):
+            for window in self.brightness_windows.values():
+                window.update_power(self.source.online if self.source else None,
+                                    self.source.battery if self.source else None)
+                window.show_level(value, count)
 
         def exit_signal(self):
             self.quit()
@@ -120,12 +137,22 @@ def main():
                 self.windows_by_monitor.pop(monitor).stop()
             for monitor in current-set(self.windows_by_monitor):
                 self.windows_by_monitor[monitor]=EdgeLight(self,monitor)
+            if self.brightness_windows is not None:
+                from .brightness_visual import BrightnessOSD
+                preferred=next(iter(self.monitors_list()),None)
+                for monitor in set(self.brightness_windows)-({preferred} if preferred else set()):
+                    self.brightness_windows.pop(monitor).stop()
+                if preferred and preferred not in self.brightness_windows:
+                    self.brightness_windows[preferred]=BrightnessOSD(self,preferred)
 
         def update_text(self):
             if not self.source:
                 return
             if self.low:
                 self.low.update(self.source.online,self.source.battery)
+            if self.brightness_windows:
+                for window in self.brightness_windows.values():
+                    window.update_power(self.source.online,self.source.battery)
             if self.energy:
                 self.energy.power_changed(self.source.online)
             title,detail=describe(self.source.online,self.source.battery,time.time())
@@ -176,6 +203,8 @@ def main():
                 self.network.close()
             if self.low:
                 self.low.close()
+            if self.brightness:
+                self.brightness.close()
             for timer in self.timers:
                 GLib.source_remove(timer)
             if self.energy:
@@ -185,6 +214,8 @@ def main():
             if self.preview_model:
                 self.preview_model.close()
             for window in list(self.windows_by_monitor.values()):
+                window.stop()
+            for window in list(self.brightness_windows.values()):
                 window.stop()
             Gtk.Application.do_shutdown(self)
 

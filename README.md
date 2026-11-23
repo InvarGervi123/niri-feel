@@ -68,12 +68,50 @@ A welcome-back interface is not implemented in this Alpha.
 | Partial-download hints | An existing local XDG Downloads directory and GIO file-monitor support |
 | Sleep accounting | Linux monotonic/boottime clocks; logind signals when available |
 | Battery energy | Readable `/sys/class/power_supply` battery energy/capacity fields |
+| Brightness OSD | Readable `/sys/class/backlight` devices; changes observed through GIO file monitoring |
 | CPU energy | Readable Intel RAPL package counters under `/sys/class/powercap` |
 | Storage | Python's built-in SQLite module; a writable user state directory |
 
 Missing energy sensors do not become invented measurements. CPU values are omitted
 when reliable RAPL coverage is unavailable. Other compositors and distributions
 have not been validated by this project.
+
+### Brightness OSD
+
+When the regular Niri Feel listener is running, backlight changes trigger a small
+top-center popup on the first connected monitor. It watches Linux backlight device
+directories, so keyboard shortcuts and external brightness tools are included
+without periodic polling. Multiple backlights are represented by their average
+percentage. The OSD reports display power as unavailable because the standard
+Linux backlight interface does not provide panel wattage. Battery time is labeled
+as an estimate and prefers UPower's `TimeToEmpty`, with remaining energy divided
+by energy rate as a fallback while on battery; unsupported or charging states
+are shown as unavailable. No
+brightness-specific configuration or extra dependency is required. The existing
+`spawn-at-startup` example below starts the feature along with Niri Feel.
+
+### Test in a clean Niri session
+
+From an existing Wayland session, launch the project-provided nested compositor:
+
+```sh
+./testing/launch-clean-niri
+```
+
+It uses a temporary Niri config and a private session D-Bus, starts `./run`,
+and removes its temporary config on exit. It does not read or edit your regular
+Niri config, start Waybar or notification daemons, or replace your login session.
+Inside the test compositor, press **Super+Shift+Q** to exit safely. Optional
+brightness test bindings map the hardware brightness keys to `brightnessctl`
+(`5%` steps); install that existing system utility if you want to test keyboard
+changes. Changes made by other brightness tools are detected too. Use
+`./testing/launch-clean-niri --validate-only` to check the isolated config
+without starting the nested compositor.
+
+The clean setup is suited to checking Niri Feel startup, battery/power events,
+OSD appearance and layer placement without other desktop OSDs. Battery timing
+and actual brightness changes still depend on the host's UPower device and
+backlight hardware.
 
 ## Get started
 

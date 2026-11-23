@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Launch a disposable nested Niri session without touching user config."""
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+
+
+project = Path(__file__).resolve().parent.parent
+validate_only = "--validate-only" in sys.argv[1:]
+niri = shutil.which("niri")
+if not niri:
+    sys.exit("Niri was not found in PATH.")
+dbus_run = shutil.which("dbus-run-session")
+if not dbus_run:
+    sys.exit("dbus-run-session was not found; it is needed to isolate the test app from the current session.")
+if not os.environ.get("WAYLAND_DISPLAY"):
+    sys.exit("Start this from an existing Wayland session to launch nested Niri.")
+
+template = (project / "testing/clean-niri.kdl.in").read_text()
+launcher = json.dumps(str(project / "run"))
+config_text = template.replace('"@NIRI_FEEL_RUN@"', launcher)
+
+with tempfile.TemporaryDirectory(prefix="niri-feel-clean-") as temporary:
+    config = Path(temporary) / "niri.kdl"
+    config.write_text(config_text)
+    validation = subprocess.run([niri, "validate", "-c", str(config)])
+    if validation.returncode:
+        sys.exit(validation.returncode)
+    if validate_only:
+        print("Clean Niri test config is valid.")
+        sys.exit(0)
+    print("Starting isolated nested Niri. Press Super+Shift+Q inside it to exit.", flush=True)
+    # Deliberately omit --session: this is a nested compositor, not a replacement
+    # for the user's login session.
+    raise SystemExit(subprocess.run([dbus_run, "--", niri, "--config", str(config)]).returncode)

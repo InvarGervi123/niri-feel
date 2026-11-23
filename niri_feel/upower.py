@@ -63,7 +63,8 @@ class PowerSource:
         if self.get(self.device, "IsPresent", False):
             self.battery = Battery(self.get(self.device, "State", 0),
                 self.get(self.device, "Percentage"), self.get(self.device, "EnergyRate"),
-                self.get(self.device, "UpdateTime", 0))
+                self.get(self.device, "UpdateTime", 0), self.get(self.device, "Energy"),
+                self.get(self.device, "TimeToEmpty"))
         else:
             self.battery = None
         edge = self.detector.update(self.online)

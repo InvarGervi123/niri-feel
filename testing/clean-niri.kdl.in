@@ -1,0 +1,27 @@
+// Isolated nested compositor for Niri Feel physical testing.
+// The launcher substitutes the absolute checkout path and passes this config
+// directly to niri; no user Niri configuration is read or modified.
+input {
+    keyboard {
+        xkb {
+            layout "us"
+        }
+    }
+}
+
+layout {
+    gaps 8
+}
+
+hotkey-overlay {
+    skip-at-startup
+}
+
+// Quit only this nested test compositor with Super+Shift+Q.
+binds {
+    Mod+Shift+Q { quit; }
+    XF86MonBrightnessUp { spawn "brightnessctl" "set" "5%+"; }
+    XF86MonBrightnessDown { spawn "brightnessctl" "set" "5%-"; }
+}
+
+spawn-at-startup "@NIRI_FEEL_RUN@"

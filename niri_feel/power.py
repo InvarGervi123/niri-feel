@@ -8,6 +8,8 @@ class Battery:
     percentage: float | None = None
     watts: float | None = None
     updated: int = 0
+    energy: float | None = None
+    time_to_empty: int | None = None
 
 
 def valid_number(value):
