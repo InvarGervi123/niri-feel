@@ -82,11 +82,11 @@ When the regular Niri Feel listener is running, backlight changes trigger a smal
 top-center popup on the first connected monitor. It watches Linux backlight device
 directories, so keyboard shortcuts and external brightness tools are included
 without periodic polling. Multiple backlights are represented by their average
-percentage. While discharging, the secondary row shows UPower's total battery
-discharge rate and estimated remaining time. The latter prefers `TimeToEmpty`,
-with remaining energy divided by energy rate as a fallback. These are hidden
-while charging, fully charged, or when readings are unavailable. Display-only
-power is not inferred from brightness. No
+percentage. The OSD reports display power as unavailable because the standard
+Linux backlight interface does not provide panel wattage. Battery time is labeled
+as an estimate and prefers UPower's `TimeToEmpty`, with remaining energy divided
+by energy rate as a fallback while on battery; unsupported or charging states
+are shown as unavailable. No
 brightness-specific configuration or extra dependency is required. The existing
 `spawn-at-startup` example below starts the feature along with Niri Feel.
 

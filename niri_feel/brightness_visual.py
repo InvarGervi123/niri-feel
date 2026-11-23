@@ -4,14 +4,7 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Gtk4LayerShell', '1.0')
 from gi.repository import Gtk, GLib, Gtk4LayerShell as Layer
-from .brightness_estimate import estimate, discharge_watts
-from .floating_ui import draw_glyph
-
-
-def update_power_windows(windows, online, battery):
-    """Push each event-driven UPower snapshot into every current OSD view."""
-    for window in windows:
-        window.update_power(online, battery)
+from .brightness_estimate import estimate, display_power
 
 
 class BrightnessOSD(Gtk.ApplicationWindow):
@@ -29,27 +22,16 @@ class BrightnessOSD(Gtk.ApplicationWindow):
         Layer.set_margin(self, Layer.Edge.TOP, 54)
         Layer.set_exclusive_zone(self, -1)
         Layer.set_keyboard_mode(self, Layer.KeyboardMode.NONE)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        box.add_css_class('feel-surface')
-        box.add_css_class('feel-brightness')
-        row = Gtk.Box(spacing=7)
-        icon = Gtk.DrawingArea()
-        icon.set_content_width(20); icon.set_content_height(20)
-        icon.set_draw_func(lambda _area, cr, _w, _h: draw_glyph(cr, 'brightness', 20))
-        self.percent = Gtk.Label(xalign=0); self.percent.add_css_class('feel-value')
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        box.add_css_class('brightness-card')
+        row = Gtk.Box(spacing=8)
+        icon = Gtk.Label(label='󰃠'); icon.add_css_class('brightness-icon')
+        self.percent = Gtk.Label(label='—%'); self.percent.add_css_class('brightness-percent')
         row.append(icon); row.append(self.percent); box.append(row)
         self.bar = Gtk.ProgressBar(); self.bar.set_show_text(False); box.append(self.bar)
-        self.secondary = Gtk.Box(spacing=8)
-        self.secondary.add_css_class('feel-brightness-secondary')
-        self.power_text = Gtk.Label(xalign=0)
-        self.power_text.add_css_class('feel-power')
-        self.time_text = Gtk.Label(xalign=1)
-        self.time_text.add_css_class('feel-runtime')
-        self.secondary.append(self.power_text)
-        self.secondary.append(self.time_text)
-        box.append(self.secondary)
+        self.secondary = Gtk.Label(xalign=0); self.secondary.add_css_class('brightness-meta'); box.append(self.secondary)
         self.set_child(box)
-        self.set_default_size(258, -1)
+        self.set_default_size(176, -1)
         self.set_opacity(0)
         self.timer = self.fade = 0
         self.generation = 0
@@ -57,23 +39,13 @@ class BrightnessOSD(Gtk.ApplicationWindow):
 
     def update_power(self, online, battery):
         self.online, self.battery = online, battery
-        self._refresh_secondary()
-
-    def _refresh_secondary(self):
-        watts = discharge_watts(self.battery, self.online)
-        runtime = estimate(self.battery, self.online)
-        self.power_text.set_text(watts or '')
-        self.power_text.set_visible(watts is not None)
-        self.time_text.set_text(runtime or '')
-        self.time_text.set_visible(runtime is not None)
-        self.secondary.set_visible(watts is not None or runtime is not None)
 
     def show_level(self, value, displays):
         if value is None:
             return
         self.percent.set_text(f'{value}%')
         self.bar.set_fraction(value / 100)
-        self._refresh_secondary()
+        self.secondary.set_text(f'{estimate(self.battery, self.online)}  ·  Display {display_power()}')
         self.present()
         self.set_opacity(1)
         self.generation += 1

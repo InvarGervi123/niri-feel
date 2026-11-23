@@ -73,9 +73,9 @@ def main():
             if not Layer.is_supported():
                 print("Wayland layer-shell is not available.",file=sys.stderr)
                 self.quit(); return
-            from .theme import BASE_CSS, install_css
-            install_css(Gdk.Display.get_default(),BASE_CSS,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+            css=Gtk.CssProvider()
+            css.load_from_data(b"window { background: transparent; box-shadow: none; }")
+            Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
             self.hold()
             self.monitors=Gdk.Display.get_default().get_monitors()
             self.monitors.connect("items-changed",lambda *_:self.sync_monitors())
@@ -112,9 +112,9 @@ def main():
                 self.network=NetworkRecovery(self)
                 from .brightness_monitor import BrightnessMonitor
                 from .brightness_visual import BrightnessOSD
+                css.load_from_data(b"window { background: transparent; box-shadow: none; } .brightness-card { background: alpha(#171923, .94); border: 1px solid alpha(white, .12); border-radius: 12px; padding: 8px 12px; min-width: 142px; } .brightness-icon { color: #f2c879; font-size: 17px; } .brightness-percent { color: #f5f3ee; font-size: 17px; font-weight: 700; } .brightness-meta { color: #b8bac4; font-size: 10px; } progress trough { min-height: 3px; background: alpha(white, .14); border-radius: 3px; } progress progress { min-height: 3px; background: #f2c879; border-radius: 3px; }")
                 monitors=self.monitors_list()
                 self.brightness_windows={monitors[0]:BrightnessOSD(self,monitors[0])} if monitors else {}
-                self.update_brightness_power()
                 self.brightness=BrightnessMonitor(self.brightness_changed)
                 print("Listening · unplug to start a session · reconnect for your summary. Ctrl+C to stop.",flush=True)
 
@@ -122,15 +122,10 @@ def main():
             return [self.monitors.get_item(i) for i in range(self.monitors.get_n_items())]
 
         def brightness_changed(self, value, count):
-            self.update_brightness_power()
             for window in self.brightness_windows.values():
+                window.update_power(self.source.online if self.source else None,
+                                    self.source.battery if self.source else None)
                 window.show_level(value, count)
-
-        def update_brightness_power(self):
-            online=self.source.online if self.source else None
-            battery=self.source.battery if self.source else None
-            from .brightness_visual import update_power_windows
-            update_power_windows((self.brightness_windows or {}).values(),online,battery)
 
         def exit_signal(self):
             self.quit()
@@ -149,14 +144,15 @@ def main():
                     self.brightness_windows.pop(monitor).stop()
                 if preferred and preferred not in self.brightness_windows:
                     self.brightness_windows[preferred]=BrightnessOSD(self,preferred)
-                    self.update_brightness_power()
 
         def update_text(self):
             if not self.source:
                 return
             if self.low:
                 self.low.update(self.source.online,self.source.battery)
-            self.update_brightness_power()
+            if self.brightness_windows:
+                for window in self.brightness_windows.values():
+                    window.update_power(self.source.online,self.source.battery)
             if self.energy:
                 self.energy.power_changed(self.source.online)
             title,detail=describe(self.source.online,self.source.battery,time.time())
