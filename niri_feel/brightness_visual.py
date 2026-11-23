@@ -8,6 +8,12 @@ from .brightness_estimate import estimate, discharge_watts
 from .floating_ui import draw_glyph
 
 
+def update_power_windows(windows, online, battery):
+    """Push each event-driven UPower snapshot into every current OSD view."""
+    for window in windows:
+        window.update_power(online, battery)
+
+
 class BrightnessOSD(Gtk.ApplicationWindow):
     def __init__(self, app, monitor):
         super().__init__(application=app)
@@ -33,7 +39,15 @@ class BrightnessOSD(Gtk.ApplicationWindow):
         self.percent = Gtk.Label(xalign=0); self.percent.add_css_class('feel-value')
         row.append(icon); row.append(self.percent); box.append(row)
         self.bar = Gtk.ProgressBar(); self.bar.set_show_text(False); box.append(self.bar)
-        self.secondary = Gtk.Label(xalign=0); self.secondary.add_css_class('feel-muted'); box.append(self.secondary)
+        self.secondary = Gtk.Box(spacing=8)
+        self.secondary.add_css_class('feel-brightness-secondary')
+        self.power_text = Gtk.Label(xalign=0)
+        self.power_text.add_css_class('feel-power')
+        self.time_text = Gtk.Label(xalign=1)
+        self.time_text.add_css_class('feel-runtime')
+        self.secondary.append(self.power_text)
+        self.secondary.append(self.time_text)
+        box.append(self.secondary)
         self.set_child(box)
         self.set_default_size(258, -1)
         self.set_opacity(0)
@@ -46,10 +60,13 @@ class BrightnessOSD(Gtk.ApplicationWindow):
         self._refresh_secondary()
 
     def _refresh_secondary(self):
-        values = [value for value in (discharge_watts(self.battery, self.online),
-                                      estimate(self.battery, self.online)) if value]
-        self.secondary.set_text('  ·  '.join(values))
-        self.secondary.set_visible(bool(values))
+        watts = discharge_watts(self.battery, self.online)
+        runtime = estimate(self.battery, self.online)
+        self.power_text.set_text(watts or '')
+        self.power_text.set_visible(watts is not None)
+        self.time_text.set_text(runtime or '')
+        self.time_text.set_visible(runtime is not None)
+        self.secondary.set_visible(watts is not None or runtime is not None)
 
     def show_level(self, value, displays):
         if value is None:

@@ -114,6 +114,7 @@ def main():
                 from .brightness_visual import BrightnessOSD
                 monitors=self.monitors_list()
                 self.brightness_windows={monitors[0]:BrightnessOSD(self,monitors[0])} if monitors else {}
+                self.update_brightness_power()
                 self.brightness=BrightnessMonitor(self.brightness_changed)
                 print("Listening · unplug to start a session · reconnect for your summary. Ctrl+C to stop.",flush=True)
 
@@ -121,10 +122,15 @@ def main():
             return [self.monitors.get_item(i) for i in range(self.monitors.get_n_items())]
 
         def brightness_changed(self, value, count):
+            self.update_brightness_power()
             for window in self.brightness_windows.values():
-                window.update_power(self.source.online if self.source else None,
-                                    self.source.battery if self.source else None)
                 window.show_level(value, count)
+
+        def update_brightness_power(self):
+            online=self.source.online if self.source else None
+            battery=self.source.battery if self.source else None
+            from .brightness_visual import update_power_windows
+            update_power_windows((self.brightness_windows or {}).values(),online,battery)
 
         def exit_signal(self):
             self.quit()
@@ -143,15 +149,14 @@ def main():
                     self.brightness_windows.pop(monitor).stop()
                 if preferred and preferred not in self.brightness_windows:
                     self.brightness_windows[preferred]=BrightnessOSD(self,preferred)
+                    self.update_brightness_power()
 
         def update_text(self):
             if not self.source:
                 return
             if self.low:
                 self.low.update(self.source.online,self.source.battery)
-            if self.brightness_windows:
-                for window in self.brightness_windows.values():
-                    window.update_power(self.source.online,self.source.battery)
+            self.update_brightness_power()
             if self.energy:
                 self.energy.power_changed(self.source.online)
             title,detail=describe(self.source.online,self.source.battery,time.time())

@@ -28,6 +28,9 @@ window {{ background: transparent; box-shadow: none; }}
 .feel-brightness label {{ font-family: sans-serif; text-shadow: 0 1px 2px rgba(3,12,16,.8); }}
 .feel-brightness .feel-value {{ color: {COLORS['pale']}; font-size: 17px; font-weight: 500; }}
 .feel-brightness .feel-muted {{ color: {COLORS['muted']}; font-size: 10px; }}
+.feel-brightness .feel-brightness-secondary {{ min-width: 220px; }}
+.feel-brightness .feel-power {{ color: {COLORS['muted']}; font-size: 10px; }}
+.feel-brightness .feel-runtime {{ color: {COLORS['mint']}; font-size: 10px; }}
 .feel-brightness progressbar {{ min-height: 3px; }}
 .feel-brightness progressbar trough {{ min-height: 3px; background: rgba(140,234,207,.12); border-radius: 3px; }}
 .feel-brightness progressbar progress {{ min-height: 3px; background: {COLORS['mint']}; border-radius: 3px; transition: all 180ms ease; }}
