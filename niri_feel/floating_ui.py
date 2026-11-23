@@ -7,11 +7,7 @@ gi.require_version('Gtk','4.0')
 from gi.repository import Gtk, Pango
 from .render import smooth
 from .session_visual import icon as summary_icon
-
-MINT=(.55,.94,.81)
-PALE=(.93,.98,.96)
-MUTED=(.72,.82,.81)
-ROSE=(.92,.69,.73)
+from .theme import MINT, PALE, MUTED, ROSE, COLORS, install_css
 _STYLED=set()
 
 
@@ -148,26 +144,25 @@ class LightColumn(Gtk.Box):
 def install_style(display):
     if display in _STYLED:return
     _STYLED.add(display)
-    css=Gtk.CssProvider()
-    css.load_from_data(b"""
-    .feel-content { background: transparent; border: none; padding: 12px 18px; }
-    .feel-content label, .feel-button-text {
-      font-family: sans-serif; font-weight: 400; color: #edf9f5;
+    css=f"""
+    .feel-content {{ background: transparent; border: none; padding: 12px 18px; }}
+    .feel-content label, .feel-button-text {{
+      font-family: sans-serif; font-weight: 400; color: {COLORS['pale']};
       text-shadow: -1px 0 rgba(3,12,16,.8), 1px 0 rgba(3,12,16,.8),
                    0 -1px rgba(3,12,16,.8), 0 1px rgba(3,12,16,.9), 0 2px 3px rgba(3,12,16,.7);
-    }
-    .feel-content .feel-eyebrow { color: #8ceacf; font-size: 10px; letter-spacing: 1px; }
-    .feel-content .feel-title { color: #edf9f5; font-size: 16px; }
-    .feel-content .feel-value { color: #b8f4df; font-size: 22px; }
-    .feel-content .feel-copy { color: #d3e6df; font-size: 12px; }
-    .feel-content .feel-muted { color: #b8d1ca; font-size: 11px; }
-    .feel-content .feel-note { color: #adc6be; font-size: 10px; }
-    .feel-content .feel-status { color: #e0c79f; font-size: 11px; }
-    .feel-action { background: rgba(9,28,30,.28); color: #baf2dd;
+    }}
+    .feel-content .feel-eyebrow {{ color: {COLORS['mint']}; font-size: 10px; letter-spacing: 1px; }}
+    .feel-content .feel-title {{ color: {COLORS['pale']}; font-size: 16px; }}
+    .feel-content .feel-value {{ color: {COLORS['value']}; font-size: 22px; }}
+    .feel-content .feel-copy {{ color: {COLORS['copy']}; font-size: 12px; }}
+    .feel-content .feel-muted {{ color: {COLORS['muted']}; font-size: 11px; }}
+    .feel-content .feel-note {{ color: {COLORS['note']}; font-size: 10px; }}
+    .feel-content .feel-status {{ color: #e0c79f; font-size: 11px; }}
+    .feel-action {{ background: rgba(9,28,30,.28); color: #baf2dd;
                    border: 1px solid rgba(140,234,207,.17); border-radius: 15px;
-                   padding: 6px 10px; box-shadow: none; }
-    .feel-action .feel-button-text { color: #d4f8ea; font-size: 11px; }
-    .feel-action:hover { background: rgba(22,54,50,.58); border-color: rgba(140,234,207,.48); }
-    .feel-action:active { background: rgba(35,74,65,.7); }
-    """)
-    Gtk.StyleContext.add_provider_for_display(display,css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+2)
+                   padding: 6px 10px; box-shadow: none; }}
+    .feel-action .feel-button-text {{ color: #d4f8ea; font-size: 11px; }}
+    .feel-action:hover {{ background: rgba(22,54,50,.58); border-color: rgba(140,234,207,.48); }}
+    .feel-action:active {{ background: rgba(35,74,65,.7); }}
+    """
+    install_css(display,css)

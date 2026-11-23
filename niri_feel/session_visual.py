@@ -1,6 +1,7 @@
 """A reconnect story on the existing click-through edge surface."""
 import cairo
 from .render import smooth
+from .theme import MINT, PALE, MUTED
 
 SUMMARY_DURATION = 4.8
 SUMMARY_HEIGHT = 210
@@ -78,7 +79,7 @@ def render_summary(cr,width,height,elapsed,summary):
     halo.add_color_stop_rgba(.65,.015,.04,.045,.62*alpha)
     halo.add_color_stop_rgba(1,.015,.04,.045,0)
     cr.set_source(halo); cr.rectangle(-218,-29,436,218); cr.fill()
-    mint=(.55,.94,.81); pale=(.93,.98,.96); muted=(.72,.82,.81)
+    mint,pale,muted=MINT,PALE,MUTED
     label="PREVIEW · SIMULATED" if summary.get("preview") else "BACK ON POWER"
     text(cr,label,0,5,10,mint,alpha)
     metrics=(("battery",summary.get("percentage_points"),"Battery · pp",1),

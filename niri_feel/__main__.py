@@ -73,9 +73,9 @@ def main():
             if not Layer.is_supported():
                 print("Wayland layer-shell is not available.",file=sys.stderr)
                 self.quit(); return
-            css=Gtk.CssProvider()
-            css.load_from_data(b"window { background: transparent; box-shadow: none; }")
-            Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+            from .theme import BASE_CSS, install_css
+            install_css(Gdk.Display.get_default(),BASE_CSS,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
             self.hold()
             self.monitors=Gdk.Display.get_default().get_monitors()
             self.monitors.connect("items-changed",lambda *_:self.sync_monitors())
@@ -112,7 +112,6 @@ def main():
                 self.network=NetworkRecovery(self)
                 from .brightness_monitor import BrightnessMonitor
                 from .brightness_visual import BrightnessOSD
-                css.load_from_data(b"window { background: transparent; box-shadow: none; } .brightness-card { background: alpha(#171923, .94); border: 1px solid alpha(white, .12); border-radius: 12px; padding: 8px 12px; min-width: 142px; } .brightness-icon { color: #f2c879; font-size: 17px; } .brightness-percent { color: #f5f3ee; font-size: 17px; font-weight: 700; } .brightness-meta { color: #b8bac4; font-size: 10px; } progress trough { min-height: 3px; background: alpha(white, .14); border-radius: 3px; } progress progress { min-height: 3px; background: #f2c879; border-radius: 3px; }")
                 monitors=self.monitors_list()
                 self.brightness_windows={monitors[0]:BrightnessOSD(self,monitors[0])} if monitors else {}
                 self.brightness=BrightnessMonitor(self.brightness_changed)
